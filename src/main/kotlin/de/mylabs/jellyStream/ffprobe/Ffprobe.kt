@@ -19,7 +19,7 @@ object Ffprobe {
             file.absolutePath
         ).redirectOutput(ProcessBuilder.Redirect.PIPE).redirectError(ProcessBuilder.Redirect.INHERIT).start()
 
-        var json = process.inputReader().readText()
+        val json = process.inputReader().readText()
         process.waitFor()
         return gson.fromJson(json, FfprobeResult::class.java)
     }
