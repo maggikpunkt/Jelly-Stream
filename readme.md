@@ -9,12 +9,18 @@ MP4 is the most compatible container format and Jellyfin can even stream it with
 Although Jellyfin usually does a good job converting itself there is the occasional weird file or flaky client that does
 not work. Even if the video is fully compatible most of the time it is not optimized for streaming.
 Remuxing with `-movflag +faststart` will make it instantly streamable and is a relatively cheap one time operation.
+The primary target is Jellyfin but other media servers should work as well.
 
 ## How?
 
 FFProbe is used to analyze the files and FFMpeg is used for conversion and transcoding. Subtitles and Audio streams are
 transcoded into compatible formats and/or extracted into external files that Jellyfin can handle. For more details see
-the integrated help text.
+the help text in the Usage section.
+
+## Requirements
+
+- Java 21 Runtime
+- FFMpeg and FFProbe
 
 ## Usage
 
