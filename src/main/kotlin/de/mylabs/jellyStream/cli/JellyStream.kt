@@ -275,7 +275,7 @@ class JellyStream : CliktCommand(
 
         for (stream in streams) {
             when (stream.codec_name) {
-                "ac3", "eac3", "dts" -> {
+                "ac3", "eac3", "dts", "vorbis" -> {
                     transcodes.add(AudioTranscode(stream, kBitPerChannel))
                     if ((stream.channels!!) > 2 || extractStereo) {
                         extractions.add(AudioExtraction(stream, baseName))

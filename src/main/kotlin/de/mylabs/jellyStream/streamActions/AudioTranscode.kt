@@ -5,7 +5,7 @@ import de.mylabs.jellyStream.ffprobe.Stream
 class AudioTranscode(override val stream: Stream, val kBitPerChannel: Int) : Transcode(stream) {
     override fun getCodec(index: Int): List<String> {
         when (stream.codec_name) {
-            "ac3", "eac3", "dts" -> {
+            "ac3", "eac3", "dts", "vorbis" -> {
                 //  "-ac:$index", "2",
                 var br = kBitPerChannel * stream.channels!!
                 val list = ArrayList<String>()
