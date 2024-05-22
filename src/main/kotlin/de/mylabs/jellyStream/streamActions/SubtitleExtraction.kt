@@ -25,16 +25,4 @@ class SubtitleExtraction(stream: Stream, baseName: String) : Extraction(stream, 
         }
         return list
     }
-
-    /*
-
-        var extension = stream.codec_name!!
-        when (stream.codec_name) {
-            "ass" -> {
-                println("Will extract ${stream.getName()}")
-                println("Will transcode ${stream.getName()}")
-            }
-        }
-
-     */
 }
