@@ -52,8 +52,8 @@ Video: Video is always copied and never transcoded.
 Audio: mp4-compatible audio is always copied and never transcoded. Incompatible audio is transcoded to AAC-LC. Incompatible surround sound audio is additionally extracted to external files. This preserves
 the original audio while increasing compatibility for the price of having to store an additional audio track.
 
-Subtitles: Subtitles are transcoded to mov_text if possible. More complex subtitles (currently all except subrip) are additionally extracted to external files. hdmv_pgs_subtitle subtitles are placed in a
-.mks container because I could not figure out which file extension jellyfin needs for them.
+Subtitles: Subtitles are transcoded to mov_text if possible. More complex subtitles (currently all except subrip) are additionally extracted to external files. hdmv_pgs_subtitle and dvb_subtitle are placed in a
+.mks containers because I could not figure out which file extension jellyfin needs for them.
 
 Others: All other stream types are currently not supported and will lead to an error instead of being thrown out silently.
 ```

@@ -310,7 +310,7 @@ class JellyStream : CliktCommand(
                     transcodes.add(SubtitleTranscode(stream))
                 }
 
-                "hdmv_pgs_subtitle" -> {
+                "hdmv_pgs_subtitle", "dvb_subtitle" -> {
                     extractions.add(SubtitleExtraction(stream, baseName))
                 }
 

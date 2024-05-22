@@ -7,7 +7,7 @@ class SubtitleExtraction(stream: Stream, baseName: String) : Extraction(stream, 
     override fun getFileExtension(): String {
         return when (stream.codec_name) {
             "subrip" -> "srt"
-            "hdmv_pgs_subtitle" -> "mks"
+            "hdmv_pgs_subtitle", "dvb_subtitle" -> "mks"
             else -> stream.codec_name
         }
     }
@@ -16,7 +16,7 @@ class SubtitleExtraction(stream: Stream, baseName: String) : Extraction(stream, 
         val list: MutableList<String> = ArrayList<String>()
         list.addAll(listOf("-c:$index", "copy"))
         when (stream.codec_name) {
-            "hdmv_pgs_subtitle" -> {
+            "hdmv_pgs_subtitle", "dvb_subtitle" -> {
                 list.add("-f")
                 list.add("matroska")
             }
