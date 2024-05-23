@@ -14,7 +14,7 @@ class AudioTranscode(override val stream: Stream, override val cleanTitle: Boole
 
                 list += listOf("-c:$index", "aac")
 
-                if (stream.channel_layout == "5.1(side)" || (stream.channels > 2 && stream.channel_layout.isNullOrEmpty())) {
+                if (stream.channel_layout == "5.1(side)" || (stream.channels == 6 && stream.channel_layout.isNullOrEmpty())) {
                     // AAC can not handle 5.1(side), this leads to audio problems:
                     // "Using a PCE to encode channel layout “5.1(side)”"
                     // Work around is down mixing to stereo
@@ -23,7 +23,6 @@ class AudioTranscode(override val stream: Stream, override val cleanTitle: Boole
                 }
 
                 list += listOf("-b:$index", "${br}k")
-
             }
 
             "aac", "mp3", "opus" -> {

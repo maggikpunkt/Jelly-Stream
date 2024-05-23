@@ -21,9 +21,9 @@ abstract class Extraction(val stream: Stream, val baseName: String, val cleanTit
             )
         }
         if (stream.disposition.forced == 1 || stream.guessedDisposition?.forced == 1) nameParts.add("forced")
-        if (stream.disposition.hearing_impaired == 1 || stream.guessedDisposition?.hearing_impaired == 1) nameParts.add(
-            "sdh"
-        )
+        if (stream.disposition.hearing_impaired == 1 || stream.guessedDisposition?.hearing_impaired == 1) {
+            nameParts.add("sdh")
+        }
         if (stream.disposition.default == 1) nameParts.add("default")
         nameParts.add(stream.getLanguage())
         nameParts.add(getFileExtension())
