@@ -22,6 +22,11 @@ the help text in the usage section.
 - Java 21 Runtime
 - FFMpeg and FFProbe
 
+## Shortcomings
+
+- Attachments are currently not supported. This means files with embedded fonts used for subtitles are currently not
+  supported.
+
 ## Usage
 
 ```
