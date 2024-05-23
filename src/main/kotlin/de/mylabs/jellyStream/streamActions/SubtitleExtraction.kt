@@ -2,7 +2,8 @@ package de.mylabs.jellyStream.streamActions
 
 import de.mylabs.jellyStream.ffprobe.Stream
 
-class SubtitleExtraction(stream: Stream, baseName: String) : Extraction(stream, baseName) {
+class SubtitleExtraction(stream: Stream, baseName: String, ignoreTitle: Boolean) :
+    Extraction(stream, baseName, ignoreTitle) {
 
     override fun getFileExtension(): String {
         return when (stream.codec_name) {

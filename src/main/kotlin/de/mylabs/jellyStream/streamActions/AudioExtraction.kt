@@ -2,7 +2,8 @@ package de.mylabs.jellyStream.streamActions
 
 import de.mylabs.jellyStream.ffprobe.Stream
 
-class AudioExtraction(stream: Stream, baseName: String) : Extraction(stream, baseName) {
+class AudioExtraction(stream: Stream, baseName: String, ignoreTitle: Boolean) :
+    Extraction(stream, baseName, ignoreTitle) {
     override fun getFileExtension(): String {
         return when (stream.codec_name) {
             "eac3" -> "ac3"

@@ -2,16 +2,19 @@ package de.mylabs.jellyStream.streamActions
 
 import de.mylabs.jellyStream.ffprobe.Stream
 
-class AudioTranscode(override val stream: Stream, val kBitPerChannel: Int) : Transcode(stream) {
+class AudioTranscode(override val stream: Stream, override val cleanTitle: Boolean, val kBitPerChannel: Int) :
+    Transcode(stream, cleanTitle) {
     override fun getCodec(index: Int): List<String> {
+        val list = ArrayList<String>()
+
         when (stream.codec_name) {
             "ac3", "eac3", "dts", "vorbis" -> {
                 //  "-ac:$index", "2",
                 var br = kBitPerChannel * stream.channels!!
-                val list = ArrayList<String>()
+
                 list += listOf("-c:$index", "aac")
 
-                if (stream.channel_layout == "5.1(side)") {
+                if (stream.channel_layout == "5.1(side)" || (stream.channels > 2 && stream.channel_layout.isNullOrEmpty())) {
                     // AAC can not handle 5.1(side), this leads to audio problems:
                     // "Using a PCE to encode channel layout “5.1(side)”"
                     // Work around is down mixing to stereo
@@ -20,16 +23,22 @@ class AudioTranscode(override val stream: Stream, val kBitPerChannel: Int) : Tra
                 }
 
                 list += listOf("-b:$index", "${br}k")
-                return list
+
             }
 
             "aac", "mp3", "opus" -> {
-                return listOf("-c:$index", "copy")
+                list += listOf("-c:$index", "copy")
             }
 
             else -> {
-                throw IllegalArgumentException()
+                throw IllegalArgumentException("Codec unknown")
             }
         }
+
+        if (titleNeedsCleaning()) {
+            list += listOf("-metadata:s:$index", "title=")
+        }
+
+        return list
     }
 }

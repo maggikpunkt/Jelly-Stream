@@ -35,6 +35,8 @@ class JellyStream : CliktCommand(
       **Subtitles:** Subtitles are transcoded to mov_text if possible. More complex subtitles (currently all except subrip) are additionally extracted to external files. hdmv_pgs_subtitle subtitles are placed in a .mks container because I could not figure out which file extension jellyfin needs for them.
       
       **Others:** All other stream types are currently not supported and will lead to an error instead of being thrown out silently.
+      
+      **Cleaning:** Audio and subtitle stream titles containing key words that describe video steams like 1080p, x264 etc. can be automatically cleaned by removing the title. 
     """.trimIndent()
 ) {
 
@@ -111,6 +113,40 @@ class JellyStream : CliktCommand(
         "--stats" to "stats",
         "--nostats" to "nostats"
     ).default("stats")
+
+    val copyLastModified by option(
+        help = "Sets the last modified attribute of " +
+            "the new file based on the original file"
+    ).switch(
+        "--copyLastModified" to true,
+        "--newLastModified" to false
+    ).default(true)
+
+    val cleanAudioStreamTitles by option(
+        help = "Removes the title of audio streams if the title seems wrong. (See section 'Cleaning' below)"
+    ).switch(
+        "--keepAllAudioStreamTitles" to false,
+        "--cleanAudioStreamTitles" to true
+    ).default(true)
+
+    val cleanSubtitleStreamTitles by option(
+        help = "Removes the title of subtitle streams if the title seems wrong. (See section 'Cleaning' below)"
+    ).switch(
+        "--keepAllSubtitleStreamTitles" to false,
+        "--cleanSubtitleStreamTitles" to true
+    ).default(true)
+
+    val guessSubtitleFlags by option(
+        help = "Tries to guess subtitle dispositions for hearing_impaired or forced from the stream title"
+    ).switch(
+        "--guessSubtitleDispositions" to true,
+    ).default(false)
+
+    val dryRun by option(
+        help = "Do not actually call ffmpeg but show output"
+    ).switch(
+        "--dryRun" to true
+    ).default(false)
 
     val ffpmegLocation by option("--ffmpeg", help = "Path to the FFmpeg executable").default("ffmpeg")
     val ffprobeLocation by option("--ffprobe", help = "Path to the FFprobe executable").default("ffprobe")
@@ -220,6 +256,24 @@ class JellyStream : CliktCommand(
         val transcodes = ArrayList<Transcode>()
         val extractions = ArrayList<Extraction>()
 
+        if (guessSubtitleFlags) {
+            for (stream in streams[Stream.SUBTITLE] ?: emptyList()) {
+                stream.guessDisposition()
+                if (stream.disposition.forced == 0 && (stream.guessedDisposition?.forced ?: 0) == 1) {
+                    println("Guessing that ${stream.getName()} is forced because the title is ${stream.getTitle()}")
+                }
+                if (stream.disposition.hearing_impaired == 0 && (
+                        stream.guessedDisposition?.hearing_impaired
+                            ?: 0
+                        ) == 1
+                ) {
+                    println(
+                        "Guessing that ${stream.getName()} is hearing_impaired because the title is ${stream.getTitle()}"
+                    )
+                }
+            }
+        }
+
         scanAudioStreams(streams[Stream.AUDIO] ?: emptyList(), baseName).let {
             transcodes += it.first
             extractions += it.second
@@ -241,31 +295,39 @@ class JellyStream : CliktCommand(
                 "verbose",
                 "debug",
                 "trace"
-            )
+            ) || dryRun
         ) {
-            print("Executing: ")
+            print("Command: ")
             println(command)
         } else {
             println("Processing...")
         }
 
-        val (result, timeTaken) = measureTimedValue {
-            ProcessBuilder(command)
-                .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .start()
-                .waitFor()
-        }
-
-        if (result == 0) {
-            println("Done. Processing time: $timeTaken")
-            renameTarget?.let {
-                print("Moving '${inputFile.name}' to '${it.parentFile.absolutePath}'...")
-                inputFile.renameTo(renameTarget)
-                println(" Moved.")
+        if (!dryRun) {
+            val (result, timeTaken) = measureTimedValue {
+                ProcessBuilder(command)
+                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start()
+                    .waitFor()
             }
-        } else {
-            exit("FFmpeg returned with $result")
+
+            if (copyLastModified) {
+                if (!newContainer.setLastModified(inputFile.lastModified())) {
+                    println("Could not override last modified attribute.")
+                }
+            }
+
+            if (result == 0) {
+                println("Done. Processing time: $timeTaken")
+                renameTarget?.let {
+                    print("Moving '${inputFile.name}' to '${it.parentFile.absolutePath}'...")
+                    inputFile.renameTo(renameTarget)
+                    println(" Moved.")
+                }
+            } else {
+                exit("FFmpeg returned with $result")
+            }
         }
     }
 
@@ -276,14 +338,14 @@ class JellyStream : CliktCommand(
         for (stream in streams) {
             when (stream.codec_name) {
                 "ac3", "eac3", "dts", "vorbis" -> {
-                    transcodes.add(AudioTranscode(stream, kBitPerChannel))
+                    transcodes.add(AudioTranscode(stream, cleanAudioStreamTitles, kBitPerChannel))
                     if ((stream.channels!!) > 2 || extractStereo) {
-                        extractions.add(AudioExtraction(stream, baseName))
+                        extractions.add(AudioExtraction(stream, baseName, cleanAudioStreamTitles))
                     }
                 }
 
                 "aac", "mp3", "opus" -> {
-                    transcodes.add(AudioTranscode(stream, kBitPerChannel))
+                    transcodes.add(AudioTranscode(stream, cleanAudioStreamTitles, kBitPerChannel))
                 }
 
                 else -> {
@@ -302,16 +364,16 @@ class JellyStream : CliktCommand(
         for (stream in streams) {
             when (stream.codec_name) {
                 "ass" -> {
-                    transcodes.add(SubtitleTranscode(stream))
-                    extractions.add(SubtitleExtraction(stream, baseName))
+                    transcodes.add(SubtitleTranscode(stream, cleanSubtitleStreamTitles))
+                    extractions.add(SubtitleExtraction(stream, baseName, cleanSubtitleStreamTitles))
                 }
 
                 "subrip", "dvd_subtitle" -> {
-                    transcodes.add(SubtitleTranscode(stream))
+                    transcodes.add(SubtitleTranscode(stream, cleanSubtitleStreamTitles))
                 }
 
                 "hdmv_pgs_subtitle", "dvb_subtitle" -> {
-                    extractions.add(SubtitleExtraction(stream, baseName))
+                    extractions.add(SubtitleExtraction(stream, baseName, cleanSubtitleStreamTitles))
                 }
 
                 else -> {
@@ -341,7 +403,7 @@ class JellyStream : CliktCommand(
                 "0",
                 "-map",
                 "0:${videoStream.index}",
-                "-c:v:0",
+                "-c:0",
                 "copy"
             )
         )
@@ -355,10 +417,14 @@ class JellyStream : CliktCommand(
         for (transcode in transcodes) {
             val codec = transcode.getCodec(i)
             if (codec[1].lowercase() == "copy") {
-                println("Copying ${transcode.stream.getName()}")
+                print("Copying ${transcode.stream.getName()}")
             } else {
-                println("Transcoding ${transcode.stream.getName()} to ${codec[1]}")
+                print("Transcoding ${transcode.stream.getName()} to ${codec[1]}")
             }
+            if (transcode.titleNeedsCleaning()) {
+                print(" and cleaning the title")
+            }
+            println()
             command.addAll(transcode.getMapping())
             command.addAll(transcode.getCodec(i))
             i++
@@ -367,7 +433,11 @@ class JellyStream : CliktCommand(
         command.addAll(listOf("-movflags", "+faststart", outputFile.path))
 
         for (extraction in extractions) {
-            println("Extracting ${extraction.stream.getName()} to ${extraction.getName()}")
+            print("Extracting ${extraction.stream.getName()} to ${extraction.getName()}")
+            if (extraction.titleNeedsCleaning()) {
+                print(" (without the title)")
+            }
+            println()
             command.addAll(extraction.getMapping())
             command.addAll(extraction.getCodec(0))
             command.add(extraction.getName())

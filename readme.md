@@ -19,7 +19,7 @@ the help text in the usage section.
 
 ## Requirements
 
-- Java 21 Runtime
+- Java 21 runtime
 - FFMpeg and FFProbe
 
 ## Shortcomings
@@ -43,6 +43,11 @@ Options:
   --kBitPerChannel=<int>                                                 The Bitrate per audio channel in kBit/s (default: 64)
   --loglevel=(quiet|panic|fatal|error|warning|info|verbose|debug|trace)  Sets the FFmpeg loglevel. Refer to the FFmpeg documentation (default: warning)
   --stats, --nostats                                                     Sets the FFmpeg 'stats' or 'nostats' flag (default: stats)
+  --copyLastModified, --newLastModified                                  Sets the last modified attribute of the new file based on the original file (default: true)
+  --keepAllAudioStreamTitles, --cleanAudioStreamTitles                   Removes the title of audio streams if the title seems wrong. (See section 'Cleaning' below) (default: true)
+  --keepAllSubtitleStreamTitles, --cleanSubtitleStreamTitles             Removes the title of subtitle streams if the title seems wrong. (See section 'Cleaning' below) (default: true)
+  --guessSubtitleDispositions                                            Tries to guess subtitle dispositions for hearing_impaired or forced from the stream title (default: false)
+  --dryRun                                                               Do not actually call ffmpeg but show output (default: false)
   --ffmpeg=<text>                                                        Path to the FFmpeg executable (default: ffmpeg)
   --ffprobe=<text>                                                       Path to the FFprobe executable (default: ffprobe)
   -h, --help                                                             Show this message and exit
@@ -54,13 +59,15 @@ Container: The "-movflag +faststart" flag is used to enable instant streaming.
 
 Video: Video is always copied and never transcoded.
 
-Audio: mp4-compatible audio is always copied and never transcoded. Incompatible audio is transcoded to AAC-LC. Incompatible surround sound audio is additionally extracted to external files. This preserves
-the original audio while increasing compatibility for the price of having to store an additional audio track.
+Audio: mp4-compatible audio is always copied and never transcoded. Incompatible audio is transcoded to AAC-LC. Incompatible surround sound audio is additionally extracted to external files. This preserves the original audio while increasing compatibility for the price of having to
+store an additional audio track.
 
-Subtitles: Subtitles are transcoded to mov_text if possible. More complex subtitles (currently all except subrip) are additionally extracted to external files. hdmv_pgs_subtitle and dvb_subtitle are placed in a
-.mks containers because I could not figure out which file extension jellyfin needs for them.
+Subtitles: Subtitles are transcoded to mov_text if possible. More complex subtitles (currently all except subrip) are additionally extracted to external files. hdmv_pgs_subtitle subtitles are placed in a .mks container because I could not figure out which file extension jellyfin needs
+for them.
 
 Others: All other stream types are currently not supported and will lead to an error instead of being thrown out silently.
+
+Cleaning: Audio and subtitle stream titles containing key words that describe video steams like 1080p, x264 etc. can be automatically cleaned by removing the title.
 ```
 
 [^1]: Make sure to pass the `--extractStereo` Flag if you really want to keep all streams in their original form. By

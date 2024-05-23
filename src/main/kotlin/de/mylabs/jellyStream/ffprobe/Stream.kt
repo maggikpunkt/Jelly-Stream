@@ -39,7 +39,8 @@ class Stream(
     val start_time: String,
     val tags: Map<String, String>?,
     val time_base: String,
-    val width: Int?
+    val width: Int?,
+    var guessedDisposition: Disposition?
 ) {
 
     fun getName(): String {
@@ -50,6 +51,19 @@ class Stream(
         return this.tags?.getOrDefault(LANGUAGE, this.tags[LANGUAGE.uppercase()])
     }
 
+    fun getTitle(): String? {
+        return tags?.get("title")
+    }
+
+    fun guessDisposition() {
+        val title = getTitle() ?: ""
+
+        val hearingImpaired = if (title.contains(REGEX_SDH)) 1 else 0
+        val forced = if (title.contains(REGEX_FORCED)) 1 else 0
+
+        guessedDisposition = Disposition(hearing_impaired = hearingImpaired, forced = forced)
+    }
+
     companion object {
         const val LANGUAGE = "language"
         const val VIDEO = "video"
@@ -57,5 +71,8 @@ class Stream(
         const val SUBTITLE = "subtitle"
         const val DATA = "data"
         const val ATTACHMENT = "attachment"
+
+        val REGEX_SDH = Regex("""(\W|^)sdh(\W|$)""", RegexOption.IGNORE_CASE)
+        val REGEX_FORCED = Regex("""(\W|^)forced(\W|$)""", RegexOption.IGNORE_CASE)
     }
 }
