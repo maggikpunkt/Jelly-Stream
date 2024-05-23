@@ -18,6 +18,10 @@ class SubtitleExtraction(stream: Stream, baseName: String, ignoreTitle: Boolean)
         list.addAll(listOf("-c:$index", "copy"))
         when (stream.codec_name) {
             "hdmv_pgs_subtitle", "dvb_subtitle" -> {
+                if (titleNeedsCleaning()) {
+                    list += listOf("-metadata:s:$index", "title=")
+                }
+
                 list.add("-f")
                 list.add("matroska")
             }
