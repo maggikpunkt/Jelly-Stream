@@ -19,11 +19,18 @@ class SubtitleExtraction(stream: Stream, baseName: String, ignoreTitle: Boolean)
         when (stream.codec_name) {
             "hdmv_pgs_subtitle", "dvb_subtitle" -> {
                 if (titleNeedsCleaning()) {
+                    // delete stream title
                     list += listOf("-metadata:s:$index", "title=")
                 }
 
-                list.add("-f")
-                list.add("matroska")
+                // delete global title
+                list += listOf("-metadata:g", "title=")
+
+                // don't copy chapter information
+                list += listOf("-map_chapters", "-1")
+
+                // force matroska format because we use mks file extension and ffmpeg does not know what to do with it
+                list += listOf("-f", "matroska")
             }
 
             else -> {}

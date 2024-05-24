@@ -16,10 +16,18 @@ class AudioExtraction(stream: Stream, baseName: String, ignoreTitle: Boolean) :
         list.addAll(listOf("-c:$index", "copy"))
         if (getFileExtension() != stream.codec_name) {
             if (titleNeedsCleaning()) {
+                // delete stream title
                 list += listOf("-metadata:s:$index", "title=")
             }
-            list.add("-f")
-            list.add(stream.codec_name)
+
+            // delete global title
+            list += listOf("-metadata:g", "title=")
+
+            // don't copy chapter information
+            list += listOf("-map_chapters", "-1")
+
+            // force format because ffmpeg does not want to put eac3 in a file with ac3 file extension
+            list += listOf("-f", stream.codec_name)
         }
         return list
     }
