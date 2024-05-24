@@ -116,7 +116,7 @@ class JellyStream : CliktCommand(
 
     val copyLastModified by option(
         help = "Sets the last modified attribute of " +
-            "the new file based on the original file"
+                "the new file based on the original file"
     ).switch(
         "--copyLastModified" to true,
         "--newLastModified" to false
@@ -263,9 +263,9 @@ class JellyStream : CliktCommand(
                     println("Guessing that ${stream.getName()} is forced because the title is ${stream.getTitle()}")
                 }
                 if (stream.disposition.hearing_impaired == 0 && (
-                        stream.guessedDisposition?.hearing_impaired
-                            ?: 0
-                        ) == 1
+                            stream.guessedDisposition?.hearing_impaired
+                                ?: 0
+                            ) == 1
                 ) {
                     println(
                         "Guessing that ${stream.getName()} is hearing_impaired because the title is ${stream.getTitle()}"
