@@ -397,6 +397,8 @@ class JellyStream : CliktCommand(
         command.addAll(listOf(ffpmegLocation, "-hide_banner", "-loglevel", loglevel, "-$stats"))
         command.addAll(
             listOf(
+                "-probesize",
+                "300M",
                 "-i",
                 inputFile.path,
                 "-map_metadata",
