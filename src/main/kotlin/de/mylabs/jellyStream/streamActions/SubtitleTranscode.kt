@@ -17,7 +17,10 @@ class SubtitleTranscode(override val stream: Stream, ignoreTitle: Boolean) : Tra
         }
 
         if (titleNeedsCleaning()) {
-            list += listOf("-metadata:s:$index", "title=")
+            list += listOf(
+                "-metadata:s:$index",
+                "title="
+            ) //"s:" here means stream not subtitle because it's metadata spec not stream spec
         }
 
         if ((stream.guessedDisposition?.forced ?: 0) == 1) {
@@ -29,7 +32,7 @@ class SubtitleTranscode(override val stream: Stream, ignoreTitle: Boolean) : Tra
         }
 
         if (disposition.isNotEmpty()) {
-            list += "-disposition:s:$index"
+            list += "-disposition:$index" //no "s:" needed because this is a stream specifier
             list += disposition.joinToString("+", "+")
         }
 
