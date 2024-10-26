@@ -24,8 +24,7 @@ import kotlin.time.measureTimedValue
 class JellyStream : CliktCommand(
     help = """ This script converts .mkv files into .mp4 files optimized for streaming. 
     Incompatible streams are transcoded and/or extracted to files compatible with jellyfin external file naming.  
-    """,
-    epilog = """
+    """, epilog = """
       **Container:** The "-movflag +faststart" flag is used to enable instant streaming.
       
       **Video:** Video is always copied and never transcoded.
@@ -50,36 +49,21 @@ class JellyStream : CliktCommand(
 
     val input by argument("input", help = "The input file or directory").path(true, true, true, false, true)
     val output by option(
-        "-o",
-        "--output",
-        help = "The output directory. Defaults to the directory of the processed file"
+        "-o", "--output", help = "The output directory. Defaults to the directory of the processed file"
     ).path(
-        true,
-        false,
-        true,
-        true,
-        true
+        true, false, true, true, true
     )
 
     val move by option(
-        "-m",
-        "--move",
-        help = "Move processed files to this directory. If not set files will not be moved"
+        "-m", "--move", help = "Move processed files to this directory. If not set files will not be moved"
     ).path(
-        true,
-        false,
-        true,
-        false,
-        true
+        true, false, true, false, true
     )
     val recursive by option(help = "Search input directory recursively").switch(
-        "-r" to true,
-        "--recursive" to true
+        "-r" to true, "--recursive" to true
     ).default(false)
     val breakOnError by option(help = "Stops on the first file that could not be processed").switch(
-        "-b" to true,
-        "--breakOnError" to true,
-        "--skipOnError" to false
+        "-b" to true, "--breakOnError" to true, "--skipOnError" to false
     ).default(false)
 
     val extractStereo by option(
@@ -89,51 +73,34 @@ class JellyStream : CliktCommand(
     ).default(false)
 
     val kBitPerChannel by option(
-        "--kBitPerChannel",
-        help = "The Bitrate per audio channel in kBit/s"
-    ).int()
-        .default(64)
-        .check("value must be even") { it in 16..512 }
+        "--kBitPerChannel", help = "The Bitrate per audio channel in kBit/s"
+    ).int().default(64).check("value must be even") { it in 16..512 }
 
     val loglevel by option(
-        "--loglevel",
-        help = "Sets the FFmpeg loglevel. Refer to the FFmpeg documentation"
+        "--loglevel", help = "Sets the FFmpeg loglevel. Refer to the FFmpeg documentation"
     ).choice(
-        "quiet",
-        "panic",
-        "fatal",
-        "error",
-        "warning",
-        "info",
-        "verbose",
-        "debug",
-        "trace"
+        "quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug", "trace"
     ).default("warning")
     val stats by option(help = "Sets the FFmpeg 'stats' or 'nostats' flag").switch(
-        "--stats" to "stats",
-        "--nostats" to "nostats"
+        "--stats" to "stats", "--nostats" to "nostats"
     ).default("stats")
 
     val copyLastModified by option(
-        help = "Sets the last modified attribute of " +
-                "the new file based on the original file"
+        help = "Sets the last modified attribute of " + "the new file based on the original file"
     ).switch(
-        "--copyLastModified" to true,
-        "--newLastModified" to false
+        "--copyLastModified" to true, "--newLastModified" to false
     ).default(true)
 
     val cleanAudioStreamTitles by option(
         help = "Removes the title of audio streams if the title seems wrong. (See section 'Cleaning' below)"
     ).switch(
-        "--keepAllAudioStreamTitles" to false,
-        "--cleanAudioStreamTitles" to true
+        "--keepAllAudioStreamTitles" to false, "--cleanAudioStreamTitles" to true
     ).default(true)
 
     val cleanSubtitleStreamTitles by option(
         help = "Removes the title of subtitle streams if the title seems wrong. (See section 'Cleaning' below)"
     ).switch(
-        "--keepAllSubtitleStreamTitles" to false,
-        "--cleanSubtitleStreamTitles" to true
+        "--keepAllSubtitleStreamTitles" to false, "--cleanSubtitleStreamTitles" to true
     ).default(true)
 
     val guessSubtitleFlags by option(
@@ -236,13 +203,12 @@ class JellyStream : CliktCommand(
             renameTarget = rt
         }
 
-        val ffprobeResult =
-            try {
-                ffprobe.probe(inputFile, ffprobeLocation)
-            } catch (e: Exception) {
-                logger.error { e }
-                throw CanNotProcessException("FFprobe error")
-            }
+        val ffprobeResult = try {
+            ffprobe.probe(inputFile, ffprobeLocation)
+        } catch (e: Exception) {
+            logger.error { e }
+            throw CanNotProcessException("FFprobe error")
+        }
 
         exitWhenNot(ffprobeResult.format.format_name == "matroska,webm", "File is not a mkv file")
 
@@ -262,10 +228,8 @@ class JellyStream : CliktCommand(
                 if (stream.disposition.forced == 0 && (stream.guessedDisposition?.forced ?: 0) == 1) {
                     println("Guessing that ${stream.getName()} is forced because the title is ${stream.getTitle()}")
                 }
-                if (stream.disposition.hearing_impaired == 0 && (
-                            stream.guessedDisposition?.hearing_impaired
-                                ?: 0
-                            ) == 1
+                if (stream.disposition.hearing_impaired == 0 && (stream.guessedDisposition?.hearing_impaired
+                        ?: 0) == 1
                 ) {
                     println(
                         "Guessing that ${stream.getName()} is hearing_impaired because the title is ${stream.getTitle()}"
@@ -291,10 +255,7 @@ class JellyStream : CliktCommand(
         val command = assembleCommand(videoStream, inputFile, newContainer, transcodes, extractions)
 
         if (loglevel in listOf(
-                "info",
-                "verbose",
-                "debug",
-                "trace"
+                "info", "verbose", "debug", "trace"
             ) || dryRun
         ) {
             print("Command: ")
@@ -305,11 +266,8 @@ class JellyStream : CliktCommand(
 
         if (!dryRun) {
             val (result, timeTaken) = measureTimedValue {
-                ProcessBuilder(command)
-                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                    .redirectError(ProcessBuilder.Redirect.INHERIT)
-                    .start()
-                    .waitFor()
+                ProcessBuilder(command).redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                    .redirectError(ProcessBuilder.Redirect.INHERIT).start().waitFor()
             }
 
             if (copyLastModified) {
@@ -449,25 +407,27 @@ class JellyStream : CliktCommand(
     }
 
     private fun checkStreams(ffprobeResult: FfprobeResult) {
-        val otherStream = ffprobeResult.streams
-            .find {
-                it.codec_type !in arrayOf(Stream.AUDIO, Stream.VIDEO, Stream.SUBTITLE)
-            }
+        val otherStream = ffprobeResult.streams.find {
+            it.codec_type !in arrayOf(Stream.AUDIO, Stream.VIDEO, Stream.SUBTITLE)
+        }
         if (otherStream != null) {
             unsupportedStream(otherStream)
         }
     }
 
     private fun checkVideoStream(streams: Map<String, List<Stream>>): Stream {
-        when (
-            streams[Stream.VIDEO]?.count() ?: 0
-        ) {
+        if (streams[Stream.VIDEO] == null) {
+            exit("No video stream found")
+        }
+        val actualVideoStreams = streams[Stream.VIDEO]!!.filter { it.disposition.attached_pic != 1 }
+
+        when (actualVideoStreams.count()) {
             0 -> exit("No video stream found")
             1 -> {}
             else -> exit("Too many video streams found")
         }
 
-        val videoStream = streams[Stream.VIDEO]!![0]
+        val videoStream = actualVideoStreams[0]
 
         if (videoStream.codec_name !in arrayOf("hevc", "h264")) {
             unsupportedStream(videoStream)
