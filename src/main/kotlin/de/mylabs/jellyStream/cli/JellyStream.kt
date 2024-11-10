@@ -429,7 +429,7 @@ class JellyStream : CliktCommand(
 
         val videoStream = actualVideoStreams[0]
 
-        if (videoStream.codec_name !in arrayOf("hevc", "h264")) {
+        if (videoStream.codec_name !in arrayOf("hevc", "h264", "av1")) {
             unsupportedStream(videoStream)
         }
 
