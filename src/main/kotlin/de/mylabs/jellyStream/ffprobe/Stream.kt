@@ -77,6 +77,20 @@ class Stream(
         return tags?.get("filename")
     }
 
+    fun isEmbeddedFont(): Boolean {
+        if (codec_type == ATTACHMENT) {
+            val mimetype = getMimetype() ?: ""
+
+            return mimetype.startsWith("font/")
+                    || mimetype.startsWith("application/font")
+                    || mimetype.startsWith("application/x-font")
+                    || codec_name == "ttf"
+
+        }
+
+        return false
+    }
+
     fun guessDisposition() {
         val title = getTitle() ?: ""
 

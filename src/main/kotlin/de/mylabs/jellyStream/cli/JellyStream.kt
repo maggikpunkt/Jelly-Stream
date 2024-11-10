@@ -24,7 +24,8 @@ import kotlin.time.measureTimedValue
 class JellyStream : CliktCommand(
     help = """ This script converts .mkv files into .mp4 files optimized for streaming. 
     Incompatible streams are transcoded and/or extracted to files compatible with jellyfin external file naming.  
-    """, epilog = """
+    """,
+    epilog = """
       **Container:** The "-movflag +faststart" flag is used to enable instant streaming.
       
       **Video:** Video is always copied and never transcoded.
@@ -33,7 +34,7 @@ class JellyStream : CliktCommand(
        
       **Subtitles:** Subtitles are transcoded to mov_text if possible. More complex subtitles (currently all except subrip) are additionally extracted to external files. hdmv_pgs_subtitle subtitles are placed in a .mks container because I could not figure out which file extension jellyfin needs for them.
       
-      **Others:** All other stream types are currently not supported and will lead to an error instead of being thrown out silently.
+      **Others:** Thumbnails will get removed. Embedded fonts (for subtitles) will raise an error message by default but can be ignored via a switch. All other stream types are currently not supported and will lead to an error instead of being thrown out silently.
       
       **Cleaning:** Audio and subtitle stream titles containing key words that describe video steams like 1080p, x264 etc. can be automatically cleaned by removing the title. 
     """.trimIndent()
@@ -49,21 +50,36 @@ class JellyStream : CliktCommand(
 
     val input by argument("input", help = "The input file or directory").path(true, true, true, false, true)
     val output by option(
-        "-o", "--output", help = "The output directory. Defaults to the directory of the processed file"
+        "-o",
+        "--output",
+        help = "The output directory. Defaults to the directory of the processed file"
     ).path(
-        true, false, true, true, true
+        true,
+        false,
+        true,
+        true,
+        true
     )
 
     val move by option(
-        "-m", "--move", help = "Move processed files to this directory. If not set files will not be moved"
+        "-m",
+        "--move",
+        help = "Move processed files to this directory. If not set files will not be moved"
     ).path(
-        true, false, true, false, true
+        true,
+        false,
+        true,
+        false,
+        true
     )
     val recursive by option(help = "Search input directory recursively").switch(
-        "-r" to true, "--recursive" to true
+        "-r" to true,
+        "--recursive" to true
     ).default(false)
     val breakOnError by option(help = "Stops on the first file that could not be processed").switch(
-        "-b" to true, "--breakOnError" to true, "--skipOnError" to false
+        "-b" to true,
+        "--breakOnError" to true,
+        "--skipOnError" to false
     ).default(false)
 
     val extractStereo by option(
@@ -73,40 +89,52 @@ class JellyStream : CliktCommand(
     ).default(false)
 
     val kBitPerChannel by option(
-        "--kBitPerChannel", help = "The Bitrate per audio channel in kBit/s"
+        "--kBitPerChannel",
+        help = "The Bitrate per audio channel in kBit/s"
     ).int().default(64).check("value must be even") { it in 16..512 }
 
     val loglevel by option(
-        "--loglevel", help = "Sets the FFmpeg loglevel. Refer to the FFmpeg documentation"
+        "--loglevel",
+        help = "Sets the FFmpeg loglevel. Refer to the FFmpeg documentation"
     ).choice(
         "quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug", "trace"
     ).default("warning")
     val stats by option(help = "Sets the FFmpeg 'stats' or 'nostats' flag").switch(
-        "--stats" to "stats", "--nostats" to "nostats"
+        "--stats" to "stats",
+        "--nostats" to "nostats"
     ).default("stats")
 
     val copyLastModified by option(
         help = "Sets the last modified attribute of " + "the new file based on the original file"
     ).switch(
-        "--copyLastModified" to true, "--newLastModified" to false
+        "--copyLastModified" to true,
+        "--newLastModified" to false
     ).default(true)
 
     val cleanAudioStreamTitles by option(
         help = "Removes the title of audio streams if the title seems wrong. (See section 'Cleaning' below)"
     ).switch(
-        "--keepAllAudioStreamTitles" to false, "--cleanAudioStreamTitles" to true
+        "--keepAllAudioStreamTitles" to false,
+        "--cleanAudioStreamTitles" to true
     ).default(true)
 
     val cleanSubtitleStreamTitles by option(
         help = "Removes the title of subtitle streams if the title seems wrong. (See section 'Cleaning' below)"
     ).switch(
-        "--keepAllSubtitleStreamTitles" to false, "--cleanSubtitleStreamTitles" to true
+        "--keepAllSubtitleStreamTitles" to false,
+        "--cleanSubtitleStreamTitles" to true
     ).default(true)
 
     val guessSubtitleFlags by option(
         help = "Tries to guess subtitle dispositions for hearing_impaired or forced from the stream title"
     ).switch(
         "--guessSubtitleDispositions" to true,
+    ).default(false)
+
+    val ignoreEmbeddedFonts by option(
+        help = "Do not throw and error when embedded fonts are detected and removes them."
+    ).switch(
+        "--ignoreEmbeddedFonts" to true,
     ).default(false)
 
     val dryRun by option(
@@ -219,40 +247,52 @@ class JellyStream : CliktCommand(
 
         val videoStream = checkVideoStream(streams)
 
-        val transcodes = ArrayList<Transcode>()
-        val extractions = ArrayList<Extraction>()
+        val streamActions = StreamActionCollection()
 
         if (guessSubtitleFlags) {
             for (stream in streams[Stream.SUBTITLE] ?: emptyList()) {
                 stream.guessDisposition()
                 if (stream.disposition.forced == 0 && (stream.guessedDisposition?.forced ?: 0) == 1) {
-                    println("Guessing that ${stream.getName()} is forced because the title is ${stream.getTitle()}")
+                    println("Guessing that ${stream.getName()} is forced because the title is \"${stream.getTitle()}\"")
                 }
-                if (stream.disposition.hearing_impaired == 0 && (stream.guessedDisposition?.hearing_impaired
-                        ?: 0) == 1
+                if (stream.disposition.hearing_impaired == 0 && (
+                            stream.guessedDisposition?.hearing_impaired
+                                ?: 0
+                            ) == 1
                 ) {
                     println(
-                        "Guessing that ${stream.getName()} is hearing_impaired because the title is ${stream.getTitle()}"
+                        "Guessing that ${stream.getName()} is hearing_impaired because the title is \"${stream.getTitle()}\""
                     )
                 }
             }
         }
 
+        scanAttachmentStreams(streams[Stream.ATTACHMENT] ?: emptyList(), baseName).let {
+            streamActions.addAll(it)
+        }
+
         scanAudioStreams(streams[Stream.AUDIO] ?: emptyList(), baseName).let {
-            transcodes += it.first
-            extractions += it.second
+            streamActions.addAll(it)
         }
 
-        scanSubtitleStreams(streams[Stream.SUBTITLE] ?: emptyList(), baseName).let {
-            transcodes += it.first
-            extractions += it.second
+        scanSubtitleStreams(
+            streams[Stream.SUBTITLE] ?: emptyList(),
+            baseName,
+            //streamActions.groupExtractions.filter { it.isEmbeddedFont() }.isNotEmpty()
+        ).let {
+            streamActions.addAll(it)
         }
 
-        for (extraction in extractions) {
+        for (extraction in streamActions.extractions) {
             exitWhen(extraction.fileAlreadyExists(), "${extraction.getName()} already exists.")
         }
 
-        val command = assembleCommand(videoStream, inputFile, newContainer, transcodes, extractions)
+        for (extraction in streamActions.groupExtractions) {
+            exitWhen(extraction.fileAlreadyExists(), "${extraction.getName()} already exists.")
+        }
+
+        val command =
+            assembleCommand(videoStream, inputFile, newContainer, streamActions)
 
         if (loglevel in listOf(
                 "info", "verbose", "debug", "trace"
@@ -289,21 +329,20 @@ class JellyStream : CliktCommand(
         }
     }
 
-    private fun scanAudioStreams(streams: List<Stream>, baseName: String): Pair<List<Transcode>, List<Extraction>> {
-        val transcodes = ArrayList<Transcode>()
-        val extractions = ArrayList<Extraction>()
+    private fun scanAudioStreams(streams: List<Stream>, baseName: String): StreamActionCollection {
+        val actions = StreamActionCollection()
 
         for (stream in streams) {
             when (stream.codec_name) {
                 "ac3", "eac3", "dts", "vorbis" -> {
-                    transcodes.add(AudioTranscode(stream, cleanAudioStreamTitles, kBitPerChannel))
+                    actions.add(AudioTranscode(stream, cleanAudioStreamTitles, kBitPerChannel))
                     if ((stream.channels!!) > 2 || extractStereo) {
-                        extractions.add(AudioExtraction(stream, baseName, cleanAudioStreamTitles))
+                        actions.add(AudioExtraction(stream, baseName, cleanAudioStreamTitles))
                     }
                 }
 
                 "aac", "mp3", "opus" -> {
-                    transcodes.add(AudioTranscode(stream, cleanAudioStreamTitles, kBitPerChannel))
+                    actions.add(AudioTranscode(stream, cleanAudioStreamTitles, kBitPerChannel))
                 }
 
                 else -> {
@@ -312,26 +351,47 @@ class JellyStream : CliktCommand(
             }
         }
 
-        return Pair(transcodes, extractions)
+        return actions
     }
 
-    private fun scanSubtitleStreams(streams: List<Stream>, baseName: String): Pair<List<Transcode>, List<Extraction>> {
-        val transcodes = ArrayList<Transcode>()
-        val extractions = ArrayList<Extraction>()
+    private fun scanAttachmentStreams(
+        streams: List<Stream>,
+        baseName: String
+    ): StreamActionCollection {
+        val actions = StreamActionCollection()
+
+        for (stream in streams) {
+            when (stream.isEmbeddedFont()) {
+                true -> if (!ignoreEmbeddedFonts) {
+                    exit("Embedded font found in stream ${stream.getName()}. Subtitles might get unusable. Use '--ignoreEmbeddedFonts' to skip this check.")
+                }
+//                true -> actions.add(GroupExtraction(stream, baseName, cleanSubtitleStreamTitles))
+                else -> unsupportedStream(stream)
+            }
+        }
+
+        return actions
+    }
+
+    private fun scanSubtitleStreams(
+        streams: List<Stream>,
+        baseName: String,
+    ): StreamActionCollection {
+        val actions = StreamActionCollection()
 
         for (stream in streams) {
             when (stream.codec_name) {
                 "ass" -> {
-                    transcodes.add(SubtitleTranscode(stream, cleanSubtitleStreamTitles))
-                    extractions.add(SubtitleExtraction(stream, baseName, cleanSubtitleStreamTitles))
+                    actions.add(SubtitleTranscode(stream, cleanSubtitleStreamTitles))
+                    actions.add(SubtitleExtraction(stream, baseName, cleanSubtitleStreamTitles))
                 }
 
                 "subrip", "dvd_subtitle" -> {
-                    transcodes.add(SubtitleTranscode(stream, cleanSubtitleStreamTitles))
+                    actions.add(SubtitleTranscode(stream, cleanSubtitleStreamTitles))
                 }
 
                 "hdmv_pgs_subtitle", "dvb_subtitle" -> {
-                    extractions.add(SubtitleExtraction(stream, baseName, cleanSubtitleStreamTitles))
+                    actions.add(SubtitleExtraction(stream, baseName, cleanSubtitleStreamTitles))
                 }
 
                 else -> {
@@ -340,15 +400,14 @@ class JellyStream : CliktCommand(
             }
         }
 
-        return Pair(transcodes, extractions)
+        return actions
     }
 
     private fun assembleCommand(
         videoStream: Stream,
         inputFile: File,
         outputFile: File,
-        transcodes: MutableList<Transcode>,
-        extractions: MutableList<Extraction>
+        streamActions: StreamActionCollection
     ): List<String> {
         val command = ArrayList<String>()
 
@@ -370,11 +429,12 @@ class JellyStream : CliktCommand(
 
         println("Copying ${videoStream.getName()}")
 
-        transcodes.sortBy { it.stream.index }
-        extractions.sortBy { it.stream.index }
+        streamActions.transcodes.sortBy { it.stream.index }
+        streamActions.extractions.sortBy { it.stream.index }
+        streamActions.groupExtractions.sortBy { it.stream.index }
 
         var i = 1
-        for (transcode in transcodes) {
+        for (transcode in streamActions.transcodes) {
             val codec = transcode.getCodec(i)
             if (codec[1].lowercase() == "copy") {
                 print("Copying ${transcode.stream.getName()}")
@@ -392,7 +452,7 @@ class JellyStream : CliktCommand(
 
         command.addAll(listOf("-movflags", "+faststart", outputFile.path))
 
-        for (extraction in extractions) {
+        for (extraction in streamActions.extractions) {
             print("Extracting ${extraction.stream.getName()} to ${extraction.getName()}")
             if (extraction.titleNeedsCleaning()) {
                 print(" (without the title)")
@@ -403,12 +463,32 @@ class JellyStream : CliktCommand(
             command.add(extraction.getName())
         }
 
+
+        if (streamActions.groupExtractions.isNotEmpty()) {
+            val groupExtractions = streamActions.groupExtractions.groupBy { it.getName() }
+            groupExtractions.forEach { (key, value) ->
+                val extractions = value.sortedBy { it.stream.index }
+                i = 0
+                for (extraction in extractions) {
+                    print("Copying ${extraction.stream.getName()} to ${extraction.getName()}")
+                    if (extraction.titleNeedsCleaning()) {
+                        print(" (without the title)")
+                    }
+                    println()
+                    command.addAll(extraction.getMapping())
+                    command.addAll(extraction.getCodec(i))
+                    i++
+                }
+                command.addAll(value[0].getGroupCodec())
+                command.add(key)
+            }
+        }
         return command
     }
 
     private fun checkStreams(ffprobeResult: FfprobeResult) {
         val otherStream = ffprobeResult.streams.find {
-            it.codec_type !in arrayOf(Stream.AUDIO, Stream.VIDEO, Stream.SUBTITLE)
+            it.codec_type !in arrayOf(Stream.AUDIO, Stream.VIDEO, Stream.SUBTITLE, Stream.ATTACHMENT)
         }
         if (otherStream != null) {
             unsupportedStream(otherStream)
