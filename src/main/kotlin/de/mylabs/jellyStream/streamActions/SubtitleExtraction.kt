@@ -9,6 +9,7 @@ class SubtitleExtraction(stream: Stream, baseName: String, ignoreTitle: Boolean)
         return when (stream.codec_name) {
             "subrip" -> "srt"
             "hdmv_pgs_subtitle", "dvb_subtitle" -> "mks"
+            null -> throw IllegalArgumentException("codec name is null")
             else -> stream.codec_name
         }
     }

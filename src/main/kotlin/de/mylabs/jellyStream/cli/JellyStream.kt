@@ -447,7 +447,7 @@ class JellyStream : CliktCommand(
     }
 
     private fun unsupportedStream(stream: Stream): Nothing {
-        exit("Stream ${stream.getName()} unsupported")
+        exit("stream ${stream.getName()} unsupported")
     }
 
     private fun exit(message: String): Nothing {

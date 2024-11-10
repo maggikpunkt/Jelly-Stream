@@ -7,6 +7,7 @@ class AudioExtraction(stream: Stream, baseName: String, ignoreTitle: Boolean) :
     override fun getFileExtension(): String {
         return when (stream.codec_name) {
             "eac3" -> "ac3"
+            null -> throw IllegalArgumentException("codec name is null")
             else -> stream.codec_name
         }
     }
@@ -26,8 +27,10 @@ class AudioExtraction(stream: Stream, baseName: String, ignoreTitle: Boolean) :
             // don't copy chapter information
             list += listOf("-map_chapters", "-1")
 
-            // force format because ffmpeg does not want to put eac3 in a file with ac3 file extension
-            list += listOf("-f", stream.codec_name)
+            if (stream.codec_name != null) {
+                // force format because ffmpeg does not want to put eac3 in a file with ac3 file extension
+                list += listOf("-f", stream.codec_name)
+            }
         }
         return list
     }

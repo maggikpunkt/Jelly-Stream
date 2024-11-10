@@ -10,7 +10,7 @@ class Stream(
     val chroma_location: String?,
     val closed_captions: Int?,
     val codec_long_name: String,
-    val codec_name: String,
+    val codec_name: String?,
     val codec_tag: String,
     val codec_tag_string: String,
     val codec_type: String,
@@ -44,7 +44,8 @@ class Stream(
 ) {
 
     fun getName(): String {
-        return "#${this.index} (${this.codec_type},${this.codec_name},${this.getLanguage()})"
+        val type = this.codec_name ?: this.getMimetype()
+        return "#${this.index} (${this.codec_type},$type,${this.getLanguage()}) ${this.getFormattedTitle()}".trimEnd()
     }
 
     fun getLanguage(): String? {
@@ -53,6 +54,27 @@ class Stream(
 
     fun getTitle(): String? {
         return tags?.get("title")
+    }
+
+    fun getFormattedTitle(): String {
+        var title = getTitle()
+        if (title == null) {
+            return ""
+        }
+
+        if (title.length > 20) {
+            title = title.take(17) + "..."
+        }
+
+        return "'$title'"
+    }
+
+    fun getMimetype(): String? {
+        return tags?.get("mimetype")
+    }
+
+    fun getFilename(): String? {
+        return tags?.get("filename")
     }
 
     fun guessDisposition() {
